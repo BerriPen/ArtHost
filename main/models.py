@@ -25,14 +25,14 @@ class Profile(models.Model):
     suffix              = models.CharField(max_length=100, blank=True)
     contact_num         = models.CharField(max_length=15, blank=True)
     birthdate           = models.DateField()
-    profile_img         = models.ImageField(upload_to='profile_pics/', blank=True)
+    profile_img         = models.ImageField(upload_to='profile_imgs/', blank=True)
 
     def __str__(self):
         return f"{self.fname} {self.lname}"
 
 class Post(models.Model):
     user                = models.ForeignKey(User, related_name='posts', on_delete=models.CASCADE, null=True)
-    photo               = models.FileField(upload_to='documents/')
+    photo               = models.FileField(upload_to='general-post/')
     caption             = models.TextField(max_length=100)
     likes               = models.ManyToManyField(User, related_name='liked_posts', blank=True)
     createdAt           = models.DateTimeField(auto_now_add=True)
@@ -96,7 +96,7 @@ class Event(models.Model):
     submission_rules    = models.TextField(max_length=100)
     voting_criteria     = models.TextField(max_length=100)
     prizes              = models.TextField(max_length=100)
-    event_banner        = models.ImageField(upload_to='event_banners/', blank=True)
+    event_banner        = models.ImageField(upload_to='banners/', blank=True)
     createdAt           = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
