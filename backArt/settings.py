@@ -129,3 +129,35 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:9000",
 ]
+
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    'formatters': {
+        'console': {
+            'format': '[%(asctime)s %(name)s] %(levelname)s [%(pathname)s:%(lineno)d] - %(message)s',
+        },
+    },
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+            'formatter': 'console',
+        },
+    },
+    "root": {
+        "handlers": ["console"],
+        "level": "WARNING",
+    },
+    "loggers": {
+        "django": {
+            "handlers": ["console"],
+            "level": 'INFO',
+            "propagate": False,
+        },
+        'main': {
+            'handlers': ['console'],
+            'level': 'INFO',
+            'propagate': False
+        },
+    },
+}

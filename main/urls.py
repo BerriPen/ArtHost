@@ -7,4 +7,7 @@ router = routers.DefaultRouter()
 
 urlpatterns = router.urls + [
     re_path('eventList', EventList.as_view(), name="event-list"),
+    re_path('userList', UserList.as_view(), name="user-list"), 
+    re_path('signup', SignUp.as_view(), name='user-signup'),
+    re_path('login', Login.as_view(), name='user-login')
 ]

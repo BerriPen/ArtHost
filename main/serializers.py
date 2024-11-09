@@ -1,5 +1,9 @@
 from rest_framework import serializers
+from django.http import JsonResponse
 from .models import *
+import logging
+
+logger = logging.getLogger(__name__)
 
 class UsertypeSerializer(serializers.ModelSerializer):
     class Meta:
@@ -91,6 +95,9 @@ class EventCategorySerializer(serializers.ModelSerializer):
         ]
 
 class EventSerializer(serializers.ModelSerializer):
+    host = serializers.SerializerMethodField()
+    judges = serializers.SerializerMethodField()
+
     class Meta:
         model = Event
         fields = [
@@ -111,3 +118,19 @@ class EventSerializer(serializers.ModelSerializer):
             "event_banner",
             "createdAt"
         ]
+
+    def get_host(self, obj):
+        host_user = UserSerializer(obj.host)
+        return host_user.data
+    
+    def get_judges (self, obj):
+        data = []
+
+        for judge in obj.judges.all():
+            temp = {
+                "username": judge.username,
+                "email": judge.email
+            }
+            data.append(temp)
+
+        return data

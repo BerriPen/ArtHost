@@ -10,7 +10,7 @@ class User(models.Model):
     username            = models.CharField(max_length=100, unique=True)
     email               = models.EmailField(max_length=100, unique=True)
     password            = models.CharField(max_length=100)
-    usertype            = models.ForeignKey(Usertype, on_delete=models.CASCADE)
+    usertype            = models.ForeignKey(Usertype, on_delete=models.CASCADE, null=True)
     dateJoined          = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
