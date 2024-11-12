@@ -44,18 +44,30 @@ class SignUp (APIView):
 
         return Response({ "success": True }, status=status.HTTP_200_OK)
 
-class Login (APIView):
+# class Login (APIView):
+#     def post(self, request):
+#         data = request.data
+        
+#         user = User.objects.get(username=data['username'])
+#         logger.info(user.password)
+
+#         logger.info(f"CHECKING PASSWORD: {check_password(data['password'], user.password)}")
+
+#         if check_password(data['password'], user.password):
+#             return True
+#         return Response({ "success": True }, status=status.HTTP_200_OK)
+
+class Login(APIView):
     def post(self, request):
         data = request.data
-        
-        user = User.objects.get(username=data['username'])
-        logger.info(user.password)
 
-        logger.info(f"CHECKING PASSWORD: {check_password(data['password'], user.password)}")
+        try:
+            user = User.objects.get(username=data['username'])
+        except User.DoesNotExist:
+            return Response({"error": "User not found."}, status=status.HTTP_404_NOT_FOUND)
 
         if check_password(data['password'], user.password):
-            return True
+            return Response({"success": True}, status=status.HTTP_200_OK)
+        return Response({"error": "Invalid credentials."}, status=status.HTTP_400_BAD_REQUEST)
 
-
-        return Response({ "success": True }, status=status.HTTP_200_OK)
         
