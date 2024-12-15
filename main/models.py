@@ -1,4 +1,8 @@
 from django.db import models
+from django.core.exceptions import ValidationError
+from rest_framework.authtoken.models import Token as DefaultToken
+from datetime import date
+
 
 class Usertype(models.Model):
     name                = models.CharField(max_length=255)
@@ -25,20 +29,39 @@ class Profile(models.Model):
     suffix              = models.CharField(max_length=255, blank=True)
     contact_num         = models.CharField(max_length=15, blank=True)
     birthdate           = models.DateField()
-    profile_img         = models.ImageField(upload_to='profile_imgs/', blank=True)
+    profile_img         = models.ImageField(upload_to='profile_imgs/', blank=True, null=True)
 
     def __str__(self):
         return f"{self.fname} {self.lname}"
+    
+    def clean(self):
+        if self.birthdate > date.today():
+            raise ValidationError("Birthdate cannot be in the future.")
+        
+    def save(self, *args, **kwargs):
+        self.clean() 
+        super(Profile, self).save(*args, **kwargs)
 
 class Post(models.Model):
     user                = models.ForeignKey(User, related_name='posts', on_delete=models.CASCADE, null=True)
-    photo               = models.FileField(upload_to='general-post/')
+    photo               = models.ImageField(upload_to='general-post/', blank=True, null=True,)
     caption             = models.TextField(max_length=255)
     likes               = models.ManyToManyField(User, related_name='liked_posts', blank=True)
     createdAt           = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return self.caption
+        return self.caption[:20]
+    
+    def like(self, user):
+        self.likes.add(user)
+        self.save()
+
+    def unlike(self, user):
+        self.likes.remove(user)
+        self.save()
+
+    def like_count(self):
+        return self.likes.count()
     
 class Comment(models.Model):
     user                = models.ForeignKey(User, related_name='comments', on_delete=models.CASCADE, null=True)
@@ -50,7 +73,7 @@ class Comment(models.Model):
 
 
     def __str__(self):
-        return f"{self.user.username} - {self.text[:20]}"
+        return f"{self.user.username} - {self.content[:20]}"
 
 class Submission(models.Model):
     user                = models.ForeignKey(User, related_name='submissions', on_delete=models.CASCADE, null=True)
@@ -101,3 +124,14 @@ class Event(models.Model):
 
     def __str__(self):
         return f"{self.name} {self.theme}"
+    
+    def clean(self):
+        if self.startDate >= self.endDate:
+            raise ValidationError("Start date must be earlier than end date.")
+
+
+class CustomToken(DefaultToken):
+    userToken = models.ForeignKey(User, related_name='auth_tokens', on_delete=models.CASCADE, null=True)
+
+    def __str__(self):
+        return f"Token for {self.user.username}, Custom Field: {self.userToken}"
