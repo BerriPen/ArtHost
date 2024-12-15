@@ -3,7 +3,10 @@ from django.http import JsonResponse
 from .models import *
 import logging
 
+from main.models import User
+
 logger = logging.getLogger(__name__)
+
 
 class UsertypeSerializer(serializers.ModelSerializer):
     class Meta:
@@ -13,6 +16,7 @@ class UsertypeSerializer(serializers.ModelSerializer):
         ]
 
 class UserSerializer(serializers.ModelSerializer):
+    password = serializers.CharField(write_only=True)
     class Meta:
         model = User
         fields = [
@@ -23,13 +27,38 @@ class UserSerializer(serializers.ModelSerializer):
             "dateJoined"
         ]
 
+# class ProfileSerializer(serializers.ModelSerializer):
+#     user = UserSerializer(read_only=True)
+#     class Meta:
+#         model = Profile
+#         fields = [
+#             "user",
+#             "followers",
+#             "fname",
+#             "mname",
+#             "lname",
+#             "suffix",
+#             "contact_num",
+#             "birthdate",
+#             "profile_img",
+#         ]
+
 class ProfileSerializer(serializers.ModelSerializer):
     user = serializers.CharField(source="user.username")
+    
+    # Check if the user is authenticated and has a profile
+    fname = serializers.CharField(source="fname", required=False)
+    mname = serializers.CharField(source="mname", required=False)
+    lname = serializers.CharField(source="lname", required=False)
+    suffix = serializers.CharField(source="suffix", required=False)
+    contact_num = serializers.CharField(source="contact_num", required=False)
+    birthdate = serializers.DateField(source="birthdate", required=False)
+    profile_img = serializers.ImageField(source="profile_img", required=False)
+
     class Meta:
         model = Profile
         fields = [
             "user",
-            "followers",
             "fname",
             "mname",
             "lname",
@@ -38,6 +67,12 @@ class ProfileSerializer(serializers.ModelSerializer):
             "birthdate",
             "profile_img",
         ]
+    
+    def to_representation(self, instance):
+        # Ensure that only authenticated users can access profile details
+        if not self.context['request'].user.is_authenticated:
+            return {}  # Return an empty dictionary or handle as needed
+        return super().to_representation(instance)
 
 class PostSerializer(serializers.ModelSerializer):
     user = serializers.CharField(source="user.username")
@@ -55,10 +90,10 @@ class PostSerializer(serializers.ModelSerializer):
         ]
 
     def get_avatar(self, obj):
-        profile = Profile.objects.filter(user=obj.user).first()
+        profile = getattr(obj.user, 'profile', None)
         if profile and profile.profile_img:
-            return profile.profile_img.url  
-        return 'https://cdn.quasar.dev/img/boy-avatar.png'  
+            return profile.profile_img.url
+        return 'https://cdn.quasar.dev/img/boy-avatar.png' 
 
 class CommentSerializer(serializers.ModelSerializer):
     likes = serializers.IntegerField(source="likes.count", read_only=True)
@@ -145,8 +180,8 @@ class EventCategorySerializer(serializers.ModelSerializer):
 #         return data
 
 class EventSerializer(serializers.ModelSerializer):
-    host = serializers.CharField(source="host.username", read_only=True)
-    judges = serializers.SerializerMethodField()
+    host = UserSerializer(read_only=True)
+    judges = UserSerializer(many=True, read_only=True)
 
     class Meta:
         model = Event
@@ -169,9 +204,6 @@ class EventSerializer(serializers.ModelSerializer):
             "createdAt",
         ]
         read_only_fields = ["createdAt"]
-
-    def get_judges(self, obj):
-        return [judge.username for judge in obj.judges.all()]
 
     def validate(self, data):
         if data['startDate'] >= data['endDate']:

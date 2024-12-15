@@ -128,10 +128,3 @@ class Event(models.Model):
     def clean(self):
         if self.startDate >= self.endDate:
             raise ValidationError("Start date must be earlier than end date.")
-
-
-class CustomToken(DefaultToken):
-    userToken = models.ForeignKey(User, related_name='auth_tokens', on_delete=models.CASCADE, null=True)
-
-    def __str__(self):
-        return f"Token for {self.user.username}, Custom Field: {self.userToken}"

@@ -1,15 +1,11 @@
 from rest_framework import routers
 from django.urls import re_path
-# from .views import CustomAuthToken
 from django.urls import path
-
-
 from .views import *
 
 router = routers.DefaultRouter()
 
 urlpatterns = router.urls + [
-    # path('api-token-auth/', CustomAuthToken.as_view(), name='api-token-auth'),
     re_path('eventList', EventList.as_view(), name="event-list"),
     re_path('userList', UserList.as_view(), name="user-list"), 
     re_path('userDetails', UserDetails.as_view(), name='user-details'),
@@ -17,5 +13,6 @@ urlpatterns = router.urls + [
     re_path('login', Login.as_view(), name='user-login'),
     re_path('postDisplay', PostDisplay.as_view(), name='post-display'),
     re_path('postUpload', PostUpload.as_view(), name='post-upload'),
+    re_path('createEvent', CreateEvent.as_view(), name='create-event'),
 ]
 

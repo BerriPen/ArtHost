@@ -1,7 +1,4 @@
 from django.shortcuts import render
-from rest_framework.authtoken.views import ObtainAuthToken
-from rest_framework.authtoken.models import Token
-from rest_framework.authentication import TokenAuthentication
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
 from rest_framework import status
@@ -9,6 +6,9 @@ from rest_framework.response import Response
 from django.contrib.auth.hashers import make_password, check_password
 from django.core.files.storage import default_storage
 from .models import User
+
+from rest_framework_simplejwt.tokens import RefreshToken
+from django.contrib.auth.models import User
 
 #import requests
 from .models import *
@@ -31,13 +31,19 @@ class UserList(APIView):
         serializer = UserSerializer(queryset, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
     
+# class UserDetails(APIView):
+#     def get(self, request):
+#         user = request.user
+#         serializer = ProfileSerializer(user)
+#         return Response(serializer.data)
+
 class UserDetails(APIView):
-    # authentication_classes = [TokenAuthentication]
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated]  # Ensure this is added
 
     def get(self, request):
         user = request.user
-        serializer = UserSerializer(user)
+        profile = Profile.objects.get(user=user)
+        serializer = ProfileSerializer(profile, context={'request': request})
         return Response(serializer.data)
     
 class SignUp (APIView):
@@ -82,7 +88,7 @@ class CreateEvent(APIView):
         serializer.save()
 
         return Response({ "success": True }, status=status.HTTP_200_OK)
-         
+
 # class Login(APIView):
 #     def post(self, request):
 #         data = request.data
@@ -90,30 +96,11 @@ class CreateEvent(APIView):
 #         try:
 #             user = User.objects.get(username=data['username'])
 #         except User.DoesNotExist:
-#             logger.error(f"User not found: {data['username']}")
 #             return Response({"error": "User not found."}, status=status.HTTP_404_NOT_FOUND)
 
 #         if check_password(data['password'], user.password):
-#             try:
-#                 Token.objects.filter(user=user).delete()  
-#                 token, created = Token.objects.get_or_create(user=user) 
-
-#                 logger.info(f"Token created for {user.username}: {created}, Token: {token.key}")
-
-#                 return Response(
-#                     {
-#                         "success": True,
-#                         "token": token.key, 
-#                         "username": user.username,
-#                     },
-#                     status=status.HTTP_200_OK,
-#                 )
-#             except Exception as e:
-#                 logger.error(f"Error creating token for {user.username}: {e}")
-#                 return Response({"error": "Token creation failed."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-#         else:
-#             logger.error(f"Invalid credentials for user: {data['username']}")
-#             return Response({"error": "Invalid credentials."}, status=status.HTTP_400_BAD_REQUEST)
+#             return Response({"success": True}, status=status.HTTP_200_OK)
+#         return Response({"error": "Invalid credentials."}, status=status.HTTP_400_BAD_REQUEST)
 
 class Login(APIView):
     def post(self, request):
@@ -125,8 +112,40 @@ class Login(APIView):
             return Response({"error": "User not found."}, status=status.HTTP_404_NOT_FOUND)
 
         if check_password(data['password'], user.password):
-            return Response({"success": True}, status=status.HTTP_200_OK)
+            refresh = RefreshToken.for_user(user)
+            access_token = str(refresh.access_token)
+
+            return Response({
+                "success": True,
+                "access_token": access_token,  
+                "user": {"username": user.username, "email": user.email}
+            }, status=status.HTTP_200_OK)
+        
         return Response({"error": "Invalid credentials."}, status=status.HTTP_400_BAD_REQUEST)
+
+# class PostUpload(APIView):
+#     permission_classes = [IsAuthenticated]
+
+#     def post(self, request):
+#         user = request.user  
+#         data = request.data
+#         file = request.FILES.get("post")
+
+#         if not file:
+#             return Response({"error": "File is required"}, status=status.HTTP_400_BAD_REQUEST)
+
+#         info = {
+#             "caption": data.get("caption", ""),
+#             "post": file,
+#             "user": user,  
+#         }
+
+#         serializer = PostSerializer(data=info)
+#         if serializer.is_valid():
+#             serializer.save()
+#             return Response({"success": True, "data": serializer.data}, status=status.HTTP_201_CREATED)
+
+#         return Response({"errors": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
 
 class PostUpload(APIView):
     permission_classes = [IsAuthenticated]
@@ -136,6 +155,9 @@ class PostUpload(APIView):
         data = request.data
         file = request.FILES.get("post")
 
+        logger.info(f"Received post upload request from user {user.username}")
+        logger.info(f"Request data: {data}")
+        
         if not file:
             return Response({"error": "File is required"}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -148,8 +170,10 @@ class PostUpload(APIView):
         serializer = PostSerializer(data=info)
         if serializer.is_valid():
             serializer.save()
+            logger.info(f"Post uploaded successfully: {serializer.data}")
             return Response({"success": True, "data": serializer.data}, status=status.HTTP_201_CREATED)
 
+        logger.error(f"Serializer errors: {serializer.errors}")
         return Response({"errors": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
 
 class PostDisplay(APIView):
@@ -158,17 +182,3 @@ class PostDisplay(APIView):
         serializer = PostSerializer(queryset, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
     
-class CustomAuthToken(ObtainAuthToken):
-    def post(self, request, *args, **kwargs):
-        serializer = self.serializer_class(
-            data=request.data, 
-            context={'request': request}
-        )
-        serializer.is_valid(raise_exception=True)
-        user = serializer.validated_data['user']
-        token, created = Token.objects.get_or_create(user=user)
-        return Response({
-            'token': token.key,
-            'user_id': user.pk,
-            'email': user.email,
-        })
